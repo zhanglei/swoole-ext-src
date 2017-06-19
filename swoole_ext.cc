@@ -29,6 +29,23 @@ PHPX_METHOD(Pool, request);
 PHPX_METHOD(Pool, release);
 PHPX_METHOD(Pool, doTask);
 
+PHPX_METHOD(RedisPool, __construct);
+PHPX_METHOD(RedisPool, connect);
+PHPX_METHOD(RedisPool, __call);
+
+PHPX_METHOD(FunctionObject, call)
+{
+    auto call = _this.get("_call");
+    Array params = _this.get("_params");
+
+    for (int i = 0; i < args.count(); i++)
+    {
+        params.append(args[i]);
+    }
+
+    php::call(call, params);
+}
+
 PHPX_EXTENSION()
 {
     Extension *ext = new Extension("swoole_ext", "0.0.1");
@@ -50,6 +67,22 @@ PHPX_EXTENSION()
         c->addMethod(PHPX_ME(Pool, request));
         c->addMethod(PHPX_ME(Pool, doTask));
         ext->registerClass(c);
+
+        Class *rp = new Class("Swoole\\RedisPool");
+        rp->extends("Swoole\\Pool");
+        rp->addMethod(PHPX_ME(RedisPool, __construct), CONSTRUCT);
+        rp->addMethod(PHPX_ME(RedisPool, connect));
+
+        ArgInfo *argInfo = new ArgInfo(2);
+        argInfo->add("query");
+        argInfo->add("callback");
+        rp->addMethod(PHPX_ME(RedisPool, __call), PUBLIC, argInfo);
+        rp->addConstant("DEFAULT_PORT", 6379);
+        ext->registerClass(rp);
+
+        Class *fo = new Class("FunctionObject");
+        fo->addMethod(PHPX_ME(FunctionObject, call));
+        ext->registerClass(fo);
     };
 
     ext->info(

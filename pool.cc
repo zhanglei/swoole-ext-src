@@ -35,6 +35,12 @@ struct Pool
 
 PHPX_METHOD(Pool, __construct)
 {
+    if (args.count() < 2)
+    {
+        error(E_ERROR, "2 arguments are required");
+        return;
+    }
+
     _this.set("config", args[0]);
     _this.set("size", args[1]);
 
@@ -49,8 +55,8 @@ PHPX_METHOD(Pool, __destruct)
     while (!pool->taskQueue.empty())
     {
         Variant task = pool->taskQueue.front();
-        pool->taskQueue.pop();
         task.delRef();
+        pool->taskQueue.pop();
     }
     while (!pool->idlePool.empty())
     {
@@ -92,17 +98,18 @@ PHPX_METHOD(Pool, remove)
 {
     Object o = args[0];
     Pool *pool = _this.fetch<Pool>();
+    int rid = o.getId();
     if (!pool)
     {
         return;
     }
-    if (pool->resourcePool.find(o.getId()) == pool->resourcePool.end())
+    if (pool->resourcePool.find(rid) == pool->resourcePool.end())
     {
         retval = false;
     }
     else
     {
-        pool->resourcePool.erase(o.getId());
+        pool->resourcePool.erase(rid);
         pool->resourceNum--;
     }
 }
@@ -145,16 +152,16 @@ PHPX_METHOD(Pool, doTask)
     Object resource;
     while (!pool->idlePool.empty())
     {
-        Object o = pool->idlePool.front();
+        Object res = pool->idlePool.front();
         pool->idlePool.pop();
-        int rid = o.getId();
+        int rid = res.getId();
         if (pool->resourcePool.find(rid) == pool->resourcePool.end())
         {
             continue;
         }
         else
         {
-            resource = o;
+            resource = res;
             break;
         }
     }
@@ -173,4 +180,5 @@ PHPX_METHOD(Pool, doTask)
     _arg_list.append(resource);
     call(task, _arg_list);
     task.delRef();
+    resource.delRef();
 }
